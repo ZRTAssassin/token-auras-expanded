@@ -3,5 +3,7 @@
 	"AURAS.Auras": "Auras",
 	"AURAS.AuraColour": "Aura Colour",
 	"AURAS.Opacity": "Opacity",
-	"AURAS.ShowTo": "Show Aura To"
+	"AURAS.ShowTo": "Show Aura To",
+	"AURAS.Style" : "Aura Style",
+	"AURAS.LineWidth" : "Line Width"
 }
