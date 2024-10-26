@@ -12,9 +12,9 @@
 	},
 	"authors": [{"name": "Kim Mantas"}, {"name":"Ryan Warren"}],
 	"scripts": ["main.js"],
-	"url": "https://bitbucket.org/zrt-foundryvtt/token-auras",
-	"manifest": "https://bitbucket.org/zrt-foundryvtt/token-auras/raw/master/module.json",
-	"download": "https://bitbucket.org/zrt-foundryvtt/token-auras/get/2.8.zip",
+	"url": "https://bitbucket.org/zrt-foundryvtt/token-auras-expanded",
+	"manifest": "https://bitbucket.org/zrt-foundryvtt/token-auras-expandeds/raw/master/module.json",
+	"download": "https://bitbucket.org/zrt-foundryvtt/token-auras-expanded/get/2.8.zip",
 	"languages": [{
 		"lang": "en",
 		"name": "English",
