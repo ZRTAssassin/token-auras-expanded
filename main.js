@@ -1,13 +1,22 @@
 const Auras = {
 	PERMISSIONS: ['all', 'limited', 'observer', 'owner', 'gm'],
+	FLAG: 'token-auras-expanded',
+	debugFlags: function (actor) {
+		console.log("Actor flags:", {
+			all: actor.flags,
+			moduleFlags: actor.flags[this.FLAG],
+			hiddenFlag: actor.getFlag(this.FLAG, 'hidden')
+		});
+	},
+
 
 	getAllAuras: function (doc) {
-		return Auras.getManualAuras(doc).concat(doc.getFlag('token-auras-expanded', 'auras') || []);
+		return Auras.getManualAuras(doc).concat(doc.getFlag(Auras.FLAG, 'auras') || []);
 	},
 
 	getManualAuras: function (doc) {
-		let aura1 = doc.getFlag('token-auras-expanded', 'aura1');
-		let aura2 = doc.getFlag('token-auras-expanded', 'aura2');
+		let aura1 = doc.getFlag(Auras.FLAG, 'aura1');
+		let aura2 = doc.getFlag(Auras.FLAG, 'aura2');
 		return [aura1 || Auras.newAura(), aura2 || Auras.newAura()];
 	},
 
@@ -50,13 +59,13 @@ const Auras = {
 				i18n = 'USER.RoleGamemaster';
 			}
 
-			return {key: perm, label: game.i18n.localize(i18n)};
+			return { key: perm, label: game.i18n.localize(i18n) };
 		});
 
 		const auraConfig = auras.map((aura, idx) => `
 			<div class="form-group">
 				<label>${game.i18n.localize('AURAS.ShowTo')}</label>
-				<select name="flags.token-auras-expanded.aura${idx + 1}.permission">
+				<select name="flags.${Auras.FLAG}.aura${idx + 1}.permission">
 					${permissions.map(option => `
 						<option value="${option.key}"
 						        ${aura.permission === option.key ? 'selected' : ''}>
@@ -67,16 +76,16 @@ const Auras = {
 			</div>
 			<div class="form-group">
 				<label>${game.i18n.localize('AURAS.HideGM')}</label>
-				<input type="checkbox" name="flags.token-auras-expanded.aura${idx + 1}.hideGM"
+				<input type="checkbox" name="flags.${Auras.FLAG}.aura${idx + 1}.hideGM"
 					${aura.hideGM ? 'checked' : ''}>
 			</div>
 			<div class="form-group">
 				<label>${game.i18n.localize('AURAS.AuraColour')}</label>
 				<div class="form-fields">
 					<input class="color" type="text" value="${aura.colour}"
-					       name="flags.token-auras-expanded.aura${idx + 1}.colour">
+					       name="flags.${Auras.FLAG}.aura${idx + 1}.colour">
 					<input type="color" value="${aura.colour}"
-					       data-edit="flags.token-auras-expanded.aura${idx + 1}.colour">
+					       data-edit="flags.${Auras.FLAG}.aura${idx + 1}.colour">
 				</div>
 			</div>
 			<div class="form-group">
@@ -85,7 +94,7 @@ const Auras = {
 					<span class="units">(0 &mdash; 1)</span>
 				</label>
 				<input type="number" value="${aura.opacity}" step="any" min="0" max="1"
-				       name="flags.token-auras-expanded.aura${idx + 1}.opacity">
+				       name="flags.${Auras.FLAG}.aura${idx + 1}.opacity">
 			</div>
 			<div class="form-group">
 				<label>
@@ -93,11 +102,11 @@ const Auras = {
 					<span class="units">(${game.i18n.localize('GridUnits')})</span>
 				</label>
 				<input type="number" value="${aura.distance ? aura.distance : ''}" step="any"
-				       name="flags.token-auras-expanded.aura${idx + 1}.distance" min="0">
+				       name="flags.${Auras.FLAG}.aura${idx + 1}.distance" min="0">
 			</div>
 			<div class="form-group">
 				<label>${game.i18n.localize('AURAS.Style')}</label>
-				<select name="flags.token-auras-expanded.aura${idx + 1}.style">
+				<select name="flags.${Auras.FLAG}.aura${idx + 1}.style">
 					<option value="fill" ${aura.style === 'fill' ? 'selected' : ''}>Fill Only</option>
 					<option value="line" ${aura.style === 'line' ? 'selected' : ''}>Line Only</option>
 					<option value="both" ${aura.style === 'both' ? 'selected' : ''}>Fill and Line</option>
@@ -109,14 +118,15 @@ const Auras = {
 					<span class="units">(px)</span>
 				</label>
 				<input type="number" value="${aura.lineWidth}" step="1" min="1"
-					name="flags.token-auras-expanded.aura${idx + 1}.lineWidth">
+					name="flags.${Auras.FLAG}.aura${idx + 1}.lineWidth">
 			</div>
 			<div class="form-group">
 				<label>${game.i18n.localize('SCENES.GridSquare')}</label>
-				<input type="checkbox" name="flags.token-auras-expanded.aura${idx + 1}.square"
+				<input type="checkbox" name="flags.${Auras.FLAG}.aura${idx + 1}.square"
                        ${aura.square ? 'checked' : ''}>
 			</div>
 		`);
+		//console.log(auraConfig);
 
 		nav.parent().find('footer').before($(`
 			<div class="tab" data-tab="auras">
@@ -138,7 +148,13 @@ const Auras = {
 	},
 
 	onRefreshToken: function (token) {
-		if ( token.tokenAuras ) {
+		console.log('[ZRT] Token Refresh:', {
+			tokenId: token.id,
+			hasAuras: !!token.tokenAuras,
+			actorFlags: token.document.actor?.flags
+		});
+
+		if (token.tokenAuras) {
 			const { x, y } = token.document;
 			token.tokenAuras.position.set(x, y);
 		}
@@ -146,27 +162,61 @@ const Auras = {
 
 	onUpdateToken: function (token, data) {
 		const aurasUpdated =
-			data.flags?.['token-auras-expanded']
-			&& ['aura1', 'aura2', 'auras'].some(k => typeof data.flags['token-auras-expanded'][k] === 'object');
+			data.flags?.[Auras.FLAG]
+			&& ['aura1', 'aura2', 'auras'].some(k => typeof data.flags[Auras.FLAG][k] === 'object');
 
 		const hiddenUpdated = "hidden" in data;
 		const sizeUpdated = "width" in data || "height" in data;
 
-		if ( aurasUpdated || hiddenUpdated || sizeUpdated ) Auras.drawAuras(token.object);
+		if (aurasUpdated || hiddenUpdated || sizeUpdated) Auras.drawAuras(token.object);
+	},
+
+	toggleActorAuras: async function (actor) {
+		const currentState = actor.getFlag(Auras.FLAG, 'hidden') || false;
+		console.log('[ZRT] Toggle - Starting with:', currentState);
+
+		// Set the flag and wait for it to complete
+		console.log('[ZRT] Toggle - Setting flag to:', !currentState);
+		await actor.update({ [`flags.${Auras.FLAG}.hidden`]: !currentState });
+
+		// Verify the flag was set
+		const newState = actor.getFlag(Auras.FLAG, 'hidden');
+		console.log('[ZRT] Toggle - Flag is now:', newState);
+
+		// Find and refresh all related tokens
+		let tokensUpdated = 0;
+		for (let tokenDoc of canvas.scene.tokens) {
+			if (tokenDoc.actor?.id === actor.id) {
+				tokensUpdated++;
+				await tokenDoc.object.refresh();
+			}
+		}
+		console.log('[ZRT] Updated tokens:', tokensUpdated);
 	},
 
 	drawAuras: function (token) {
-		if ( token.tokenAuras?.removeChildren ) token.tokenAuras.removeChildren().forEach(c => c.destroy());
-		if ( token.document.hidden && !game.user.isGM ) return;
+		console.log('[ZRT] Draw Auras - Token:', {
+			id: token.id,
+			actorId: token.document.actor?.id,
+			actorFlags: token.document.actor?.flags,
+			flagValue: token.document.actor?.getFlag(Auras.FLAG, 'hidden')
+		});
+		if (token.tokenAuras?.removeChildren) token.tokenAuras.removeChildren().forEach(c => c.destroy());
+		if (token.document.hidden && !game.user.isGM) return;
 
 		const auras = Auras.getAllAuras(token.document).filter(a => {
-			if ( !a.distance || (a.permission === 'gm' && !game.user.isGM) ) return false;
-			if (game.user.isGM && a.hideGM) return false; 
-			if ( !a.permission || a.permission === 'all' || (a.permission === 'gm' && game.user.isGM) ) return true;
+			console.log('[ZRT] Auras checking by flag', token.document.actor?.getFlag(Auras.FLAG, 'hidden'));
+			if (token.document.actor?.getFlag(Auras.FLAG, 'hidden') && !game.user.isGM) {
+				console.log('[ZRT] Auras hidden by flag');
+				return false;
+			}
+			if (!a.distance || (a.permission === 'gm' && !game.user.isGM)) return false;
+			if (game.user.isGM && a.hideGM) return false;
+			if (!a.permission || a.permission === 'all' || (a.permission === 'gm' && game.user.isGM)) return true;
 			return !!token.document?.actor?.testUserPermission(game.user, a.permission.toUpperCase());
 		});
 
-		if ( !auras.length ) return;
+		if (!auras.length) return;
 
 		token.tokenAuras ??= canvas.grid.tokenAuras.addChild(new PIXI.Container());
 		const gfx = token.tokenAuras.addChild(new PIXI.Graphics());
@@ -179,13 +229,13 @@ const Auras = {
 		auras.forEach(aura => {
 			let w, h;
 
-			if ( aura.square ) {
+			if (aura.square) {
 				w = aura.distance * 2 + (width * dim.distance);
 				h = aura.distance * 2 + (height * dim.distance);
 			} else {
 				[w, h] = [aura.distance, aura.distance];
 
-				if ( squareGrid ) {
+				if (squareGrid) {
 					w += width * dim.distance / 2;
 					h += height * dim.distance / 2;
 				} else {
@@ -209,7 +259,7 @@ const Auras = {
 				gfx.lineStyle(aura.lineWidth, colorValue, aura.opacity);
 			}
 
-			if ( aura.square ) {
+			if (aura.square) {
 				const [x, y] = [cx - w / 2, cy - h / 2];
 				gfx.drawRect(x, y, w, h);
 			} else {
@@ -221,6 +271,40 @@ const Auras = {
 	}
 };
 
+
+Hooks.on('renderTokenHUD', (hud, html, token) => {
+
+	if (!game.user.isGM && !token.isOwner) return;
+
+	let controlledActor = game.actors.get(token.actorId);
+	const hidden = controlledActor.getFlag(Auras.FLAG, 'hidden');
+	// console.log("token, Actor", controlledActor);
+	const tokenHudButton = $(`<div class="control-icon${hidden ? ' active' : ''}" data-action="toggle-auras">
+        <i class="fas fa-ring"></i>
+    </div>`);
+	html.find('.col.right').append(tokenHudButton);
+
+	const rightCol = html.find('.col.right');
+	const otherButtons = rightCol.find('.control-icon');
+	// console.log("Other control icons:", otherButtons);
+
+	tokenHudButton.click(async () => {
+		//TODO
+		// console.log("[ZRT] renderTokenHUD, HUD:", typeof (hud), hud);
+		// console.log("[ZRT] renderTokenHUD, HTML", html);
+		// console.log("[ZRT] renderTokenHUD, TOKEN", token);
+		// console.log("[ZRT] FLAG", Auras.FLAG);
+
+
+		Auras.debugFlags(controlledActor);
+
+		// console.log("clicked button, ActorId: ", token.actorId, "controlledActor:", controlledActor);
+		await Auras.toggleActorAuras(controlledActor);
+
+		hud.render();
+	});
+
+});
 Hooks.on('renderTokenConfig', Auras.onConfigRender);
 Hooks.on('drawToken', Auras.drawAuras);
 Hooks.on('refreshToken', Auras.onRefreshToken);
@@ -229,3 +313,28 @@ Hooks.on('drawGridLayer', layer => {
 	layer.tokenAuras = layer.addChildAt(new PIXI.Container(), layer.getChildIndex(layer.borders));
 });
 Hooks.on('destroyToken', token => token.tokenAuras?.destroy());
+// Hooks.once('init', () => {
+// 	game.modules.get(Auras.FLAG).api = Auras;
+// 	FLAG.register(Auras.FLAG);
+// });
+
+
+
+// Add this hook
+Hooks.on('updateActor', (actor, changes) => {
+	console.log('[ZRT] Actor Updated:', {
+		actor: actor.id,
+		changes: changes,
+		hasHiddenChange: changes.flags?.[Auras.FLAG]?.hidden !== undefined
+	});
+
+	// If our hidden flag changed, refresh all tokens with this actor
+	if (changes.flags?.[Auras.FLAG]?.hidden !== undefined) {
+		canvas.scene.tokens.forEach(tokenDoc => {
+			if (tokenDoc.actor?.id === actor.id) {
+				console.log('[ZRT] Refreshing token due to actor update:', tokenDoc.id);
+				Auras.drawAuras(tokenDoc.object);
+			}
+		});
+	}
+});
