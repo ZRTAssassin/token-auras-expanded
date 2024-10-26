@@ -3,5 +3,8 @@
 	"AURAS.Auras": "Auren",
 	"AURAS.AuraColour": "Aura Farbe",
 	"AURAS.Opacity": "Transparenz",
-	"AURAS.ShowTo": "Zeige Aura für"
+	"AURAS.ShowTo": "Zeige Aura für",
+	"AURAS.Style" : "Aura Style",
+	"AURAS.LineWidth" : "Line Width",
+	"AURAS.HideGM" : "Hide from GM"
 }

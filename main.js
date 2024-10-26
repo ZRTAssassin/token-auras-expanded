@@ -18,7 +18,10 @@ const Auras = {
 			opacity: .5,
 			square: false,
 			permission: 'all',
-			uuid: Auras.uuid()
+			uuid: Auras.uuid(),
+			style: 'fill',
+			lineWidth: 8,
+			hideGM: false
 		};
 	},
 
@@ -63,6 +66,11 @@ const Auras = {
 				</select>
 			</div>
 			<div class="form-group">
+				<label>${game.i18n.localize('AURAS.HideGM')}</label>
+				<input type="checkbox" name="flags.token-auras.aura${idx + 1}.hideGM"
+					${aura.hideGM ? 'checked' : ''}>
+			</div>
+			<div class="form-group">
 				<label>${game.i18n.localize('AURAS.AuraColour')}</label>
 				<div class="form-fields">
 					<input class="color" type="text" value="${aura.colour}"
@@ -86,6 +94,22 @@ const Auras = {
 				</label>
 				<input type="number" value="${aura.distance ? aura.distance : ''}" step="any"
 				       name="flags.token-auras.aura${idx + 1}.distance" min="0">
+			</div>
+			<div class="form-group">
+				<label>${game.i18n.localize('AURAS.Style')}</label>
+				<select name="flags.token-auras.aura${idx + 1}.style">
+					<option value="fill" ${aura.style === 'fill' ? 'selected' : ''}>Fill Only</option>
+					<option value="line" ${aura.style === 'line' ? 'selected' : ''}>Line Only</option>
+					<option value="both" ${aura.style === 'both' ? 'selected' : ''}>Fill and Line</option>
+				</select>
+			</div>
+			<div class="form-group">
+				<label>
+					${game.i18n.localize('AURAS.LineWidth')}
+					<span class="units">(px)</span>
+				</label>
+				<input type="number" value="${aura.lineWidth}" step="1" min="1"
+					name="flags.token-auras.aura${idx + 1}.lineWidth">
 			</div>
 			<div class="form-group">
 				<label>${game.i18n.localize('SCENES.GridSquare')}</label>
@@ -137,6 +161,7 @@ const Auras = {
 
 		const auras = Auras.getAllAuras(token.document).filter(a => {
 			if ( !a.distance || (a.permission === 'gm' && !game.user.isGM) ) return false;
+			if (game.user.isGM && a.hideGM) return false; 
 			if ( !a.permission || a.permission === 'all' || (a.permission === 'gm' && game.user.isGM) ) return true;
 			return !!token.document?.actor?.testUserPermission(game.user, a.permission.toUpperCase());
 		});
@@ -171,7 +196,18 @@ const Auras = {
 
 			w *= unit;
 			h *= unit;
-			gfx.beginFill(Color.from(aura.colour), aura.opacity);
+			let colorValue = Color.from(aura.colour)
+			//gfx.beginFill(Color.from(aura.colour), aura.opacity);
+			if (aura.style === 'fill' || aura.style === 'both') {
+				gfx.beginFill(colorValue, aura.opacity);
+			}
+
+			if (aura.style === 'line' || aura.style === 'both') {
+				if (!aura.lineWidth) {
+					aura.lineWidth = 8;
+				}
+				gfx.lineStyle(aura.lineWidth, colorValue, aura.opacity);
+			}
 
 			if ( aura.square ) {
 				const [x, y] = [cx - w / 2, cy - h / 2];
