@@ -20,7 +20,8 @@ const Auras = {
 			permission: 'all',
 			uuid: Auras.uuid(),
 			style: 'fill',
-			lineWidth: 8
+			lineWidth: 8,
+			hideGM: false
 		};
 	},
 
@@ -63,6 +64,11 @@ const Auras = {
 						</option>
 					`)}
 				</select>
+			</div>
+			<div class="form-group">
+				<label>${game.i18n.localize('AURAS.HideGM')}</label>
+				<input type="checkbox" name="flags.token-auras.aura${idx + 1}.hideGM"
+					${aura.hideGM ? 'checked' : ''}>
 			</div>
 			<div class="form-group">
 				<label>${game.i18n.localize('AURAS.AuraColour')}</label>
@@ -155,6 +161,7 @@ const Auras = {
 
 		const auras = Auras.getAllAuras(token.document).filter(a => {
 			if ( !a.distance || (a.permission === 'gm' && !game.user.isGM) ) return false;
+			if (game.user.isGM && a.hideGM) return false; 
 			if ( !a.permission || a.permission === 'all' || (a.permission === 'gm' && game.user.isGM) ) return true;
 			return !!token.document?.actor?.testUserPermission(game.user, a.permission.toUpperCase());
 		});

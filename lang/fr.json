@@ -5,5 +5,6 @@
 	"AURAS.Opacity": "Opacité",
 	"AURAS.ShowTo": "Montrer l'aura à",
 	"AURAS.Style" : "Aura Style",
-	"AURAS.LineWidth" : "Line Width"
+	"AURAS.LineWidth" : "Line Width",
+	"AURAS.HideGM" : "Hide from GM"
 }
