@@ -2,12 +2,12 @@ const Auras = {
 	PERMISSIONS: ['all', 'limited', 'observer', 'owner', 'gm'],
 
 	getAllAuras: function (doc) {
-		return Auras.getManualAuras(doc).concat(doc.getFlag('token-auras', 'auras') || []);
+		return Auras.getManualAuras(doc).concat(doc.getFlag('token-auras-expanded', 'auras') || []);
 	},
 
 	getManualAuras: function (doc) {
-		let aura1 = doc.getFlag('token-auras', 'aura1');
-		let aura2 = doc.getFlag('token-auras', 'aura2');
+		let aura1 = doc.getFlag('token-auras-expanded', 'aura1');
+		let aura2 = doc.getFlag('token-auras-expanded', 'aura2');
 		return [aura1 || Auras.newAura(), aura2 || Auras.newAura()];
 	},
 
@@ -56,7 +56,7 @@ const Auras = {
 		const auraConfig = auras.map((aura, idx) => `
 			<div class="form-group">
 				<label>${game.i18n.localize('AURAS.ShowTo')}</label>
-				<select name="flags.token-auras.aura${idx + 1}.permission">
+				<select name="flags.token-auras-expanded.aura${idx + 1}.permission">
 					${permissions.map(option => `
 						<option value="${option.key}"
 						        ${aura.permission === option.key ? 'selected' : ''}>
@@ -67,16 +67,16 @@ const Auras = {
 			</div>
 			<div class="form-group">
 				<label>${game.i18n.localize('AURAS.HideGM')}</label>
-				<input type="checkbox" name="flags.token-auras.aura${idx + 1}.hideGM"
+				<input type="checkbox" name="flags.token-auras-expanded.aura${idx + 1}.hideGM"
 					${aura.hideGM ? 'checked' : ''}>
 			</div>
 			<div class="form-group">
 				<label>${game.i18n.localize('AURAS.AuraColour')}</label>
 				<div class="form-fields">
 					<input class="color" type="text" value="${aura.colour}"
-					       name="flags.token-auras.aura${idx + 1}.colour">
+					       name="flags.token-auras-expanded.aura${idx + 1}.colour">
 					<input type="color" value="${aura.colour}"
-					       data-edit="flags.token-auras.aura${idx + 1}.colour">
+					       data-edit="flags.token-auras-expanded.aura${idx + 1}.colour">
 				</div>
 			</div>
 			<div class="form-group">
@@ -85,7 +85,7 @@ const Auras = {
 					<span class="units">(0 &mdash; 1)</span>
 				</label>
 				<input type="number" value="${aura.opacity}" step="any" min="0" max="1"
-				       name="flags.token-auras.aura${idx + 1}.opacity">
+				       name="flags.token-auras-expanded.aura${idx + 1}.opacity">
 			</div>
 			<div class="form-group">
 				<label>
@@ -93,11 +93,11 @@ const Auras = {
 					<span class="units">(${game.i18n.localize('GridUnits')})</span>
 				</label>
 				<input type="number" value="${aura.distance ? aura.distance : ''}" step="any"
-				       name="flags.token-auras.aura${idx + 1}.distance" min="0">
+				       name="flags.token-auras-expanded.aura${idx + 1}.distance" min="0">
 			</div>
 			<div class="form-group">
 				<label>${game.i18n.localize('AURAS.Style')}</label>
-				<select name="flags.token-auras.aura${idx + 1}.style">
+				<select name="flags.token-auras-expanded.aura${idx + 1}.style">
 					<option value="fill" ${aura.style === 'fill' ? 'selected' : ''}>Fill Only</option>
 					<option value="line" ${aura.style === 'line' ? 'selected' : ''}>Line Only</option>
 					<option value="both" ${aura.style === 'both' ? 'selected' : ''}>Fill and Line</option>
@@ -109,11 +109,11 @@ const Auras = {
 					<span class="units">(px)</span>
 				</label>
 				<input type="number" value="${aura.lineWidth}" step="1" min="1"
-					name="flags.token-auras.aura${idx + 1}.lineWidth">
+					name="flags.token-auras-expanded.aura${idx + 1}.lineWidth">
 			</div>
 			<div class="form-group">
 				<label>${game.i18n.localize('SCENES.GridSquare')}</label>
-				<input type="checkbox" name="flags.token-auras.aura${idx + 1}.square"
+				<input type="checkbox" name="flags.token-auras-expanded.aura${idx + 1}.square"
                        ${aura.square ? 'checked' : ''}>
 			</div>
 		`);
@@ -146,8 +146,8 @@ const Auras = {
 
 	onUpdateToken: function (token, data) {
 		const aurasUpdated =
-			data.flags?.['token-auras']
-			&& ['aura1', 'aura2', 'auras'].some(k => typeof data.flags['token-auras'][k] === 'object');
+			data.flags?.['token-auras-expanded']
+			&& ['aura1', 'aura2', 'auras'].some(k => typeof data.flags['token-auras-expanded'][k] === 'object');
 
 		const hiddenUpdated = "hidden" in data;
 		const sizeUpdated = "width" in data || "height" in data;
