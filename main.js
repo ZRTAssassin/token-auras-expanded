@@ -319,12 +319,6 @@ Hooks.on('drawGridLayer', layer => {
 	layer.tokenAuras = layer.addChildAt(new PIXI.Container(), layer.getChildIndex(layer.borders));
 });
 Hooks.on('destroyToken', token => token.tokenAuras?.destroy());
-// Hooks.once('init', () => {
-// 	game.modules.get(Auras.FLAG).api = Auras;
-// 	FLAG.register(Auras.FLAG);
-// });
-
-
 
 // Add this hook
 Hooks.on('updateActor', (actor, changes) => {
