@@ -206,10 +206,11 @@ const Auras = {
 
 		const auras = Auras.getAllAuras(token.document).filter(a => {
 			console.log('[ZRT] Auras checking by flag', token.document.actor?.getFlag(Auras.FLAG, 'hidden'));
-			if (token.document.actor?.getFlag(Auras.FLAG, 'hidden') && !game.user.isGM) {
+			if (token.document.actor?.getFlag(Auras.FLAG, 'hidden')) {
 				console.log('[ZRT] Auras hidden by flag');
 				return false;
 			}
+			//&& game.user.isGM) 
 			if (!a.distance || (a.permission === 'gm' && !game.user.isGM)) return false;
 			if (game.user.isGM && a.hideGM) return false;
 			if (!a.permission || a.permission === 'all' || (a.permission === 'gm' && game.user.isGM)) return true;
@@ -273,13 +274,18 @@ const Auras = {
 
 
 Hooks.on('renderTokenHUD', (hud, html, token) => {
+	const controlledActor = game.actors.get(token.actorId);
 
-	if (!game.user.isGM && !token.isOwner) return;
+	const hasOwnerPermission = controlledActor.testUserPermission(game.user, "OWNER");
+	console.log("Is Owner:", hasOwnerPermission);
+	
+	if (!game.user.isGM && !hasOwnerPermission) return;
+	console.log("[ZRT] force hud render");
 
-	let controlledActor = game.actors.get(token.actorId);
+
 	const hidden = controlledActor.getFlag(Auras.FLAG, 'hidden');
 	// console.log("token, Actor", controlledActor);
-	const tokenHudButton = $(`<div class="control-icon${hidden ? ' active' : ''}" data-action="toggle-auras">
+	const tokenHudButton = $(`<div class="control-icon${hidden ? '' : ' active'}" data-action="toggle-auras">
         <i class="fas fa-ring"></i>
     </div>`);
 	html.find('.col.right').append(tokenHudButton);
