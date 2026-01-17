@@ -2,7 +2,17 @@ const Auras = {
 	PERMISSIONS: ['all', 'limited', 'observer', 'owner', 'gm'],
 	FLAG: 'token-auras-expanded',
 	ENABLE_LOGGING_SETTING: 'enableLogging',
-	debugFlags: function (actor) {
+	debugFlags: function (message, data) {
+		const setting = game.settings.get(this.FLAG, this.ENABLE_LOGGING_SETTING)
+		if (setting) {
+			if (data !== undefined) {
+				console.log(message, data);
+			} else {
+				console.log(message);
+			}
+		}
+	},
+	debugActorFlags: function (actor) {
 		const setting = game.settings.get(this.FLAG, this.ENABLE_LOGGING_SETTING)
 		if (setting) {
 
@@ -51,13 +61,23 @@ const Auras = {
 		position.width = 540;
 		config.setPosition(position);
 
-		const nav = html.find('nav[data-group="main"]');
-		nav.append($(`
-            <a class="item" data-tab="auras">
-                <i class="far fa-dot-circle"></i>
-                ${game.i18n.localize('AURAS.Auras')}
-            </a>
-        `));
+		// Find the nav element
+		const nav = html.querySelector('nav');
+		if (!nav) {
+			console.error("ZRT - Could not find nav element");
+			return;
+		}
+
+		// Create and append the tab button
+		const tabButton = document.createElement('a');
+		tabButton.dataset.action = 'tab';
+		tabButton.dataset.group = 'sheet';
+		tabButton.dataset.tab = 'auras';
+		tabButton.innerHTML = `
+        <i class="fa-solid fa-dot-circle" inert=""></i>
+        <span>${game.i18n.localize('AURAS.Auras')}</span>
+    `;
+		nav.appendChild(tabButton);
 
 		const permissions = Auras.PERMISSIONS.map(perm => {
 			let i18n = `OWNERSHIP.${perm.toUpperCase()}`;
@@ -67,107 +87,128 @@ const Auras = {
 		});
 
 		const auraConfig = auras.map((aura, idx) => `
-            <div class="form-group">
-                <label>${game.i18n.localize('AURAS.ShowTo')}</label>
-                <select name="flags.token-auras-expanded.aura${idx + 1}.permission">
-                    ${permissions.map(option => `
-                        <option value="${option.key}"
-                                ${aura.permission === option.key ? 'selected' : ''}>
-                            ${option.label}
-                        </option>
-                    `)}
-                </select>
+        <div class="form-group">
+            <label>${game.i18n.localize('AURAS.ShowTo')}</label>
+            <select name="flags.token-auras-expanded.aura${idx + 1}.permission">
+                ${permissions.map(option => `
+                    <option value="${option.key}"
+                            ${aura.permission === option.key ? 'selected' : ''}>
+                        ${option.label}
+                    </option>
+                `).join('')}
+            </select>
+        </div>
+        <div class="form-group">
+            <label>${game.i18n.localize('AURAS.HideGM')}</label>
+            <input type="checkbox" name="flags.token-auras-expanded.aura${idx + 1}.hideGM"
+                ${aura.hideGM ? 'checked' : ''}>
+        </div>
+        <div class="form-group">
+            <label>${game.i18n.localize('AURAS.AuraColour')}</label>
+            <div class="form-fields">
+                <input class="color" type="text" value="${aura.colour}"
+                       name="flags.token-auras-expanded.aura${idx + 1}.colour">
+                <input type="color" value="${aura.colour}"
+                       data-edit="flags.token-auras-expanded.aura${idx + 1}.colour">
             </div>
-			<div class="form-group">
-				<label>${game.i18n.localize('AURAS.HideGM')}</label>
-				<input type="checkbox" name="flags.token-auras-expanded.aura${idx + 1}.hideGM"
-					${aura.hideGM ? 'checked' : ''}>
-			</div>
-            <div class="form-group">
-                <label>${game.i18n.localize('AURAS.AuraColour')}</label>
-                <div class="form-fields">
-                    <input class="color" type="text" value="${aura.colour}"
-                           name="flags.token-auras-expanded.aura${idx + 1}.colour">
-                    <input type="color" value="${aura.colour}"
-                           data-edit="flags.token-auras-expanded.aura${idx + 1}.colour">
-                </div>
-            </div>
-            <div class="form-group">
-                <label>
-                    ${game.i18n.localize('AURAS.Opacity')}
-                    <span class="units">(0 — 1)</span>
-                </label>
-                <input type="number" value="${aura.opacity}" step="any" min="0" max="1"
-                       name="flags.token-auras-expanded.aura${idx + 1}.opacity">
-            </div>
-            <div class="form-group">
-                <label>
-                    ${game.i18n.localize('SCENES.GridDistance')}
-                    <span class="units">(${game.i18n.localize('GridUnits')})</span>
-                </label>
-                <input type="number" value="${aura.distance ? aura.distance : ''}" step="any"
-                       name="flags.token-auras-expanded.aura${idx + 1}.distance" min="0">
-            </div>
-			<div class="form-group">
-				<label>${game.i18n.localize('AURAS.Style')}</label>
-				<select name="flags.token-auras-expanded.aura${idx + 1}.style">
-					<option value="fill" ${aura.style === 'fill' ? 'selected' : ''}>Fill Only</option>
-					<option value="line" ${aura.style === 'line' ? 'selected' : ''}>Line Only</option>
-					<option value="both" ${aura.style === 'both' ? 'selected' : ''}>Fill and Line</option>
-				</select>
-			</div>
-			<div class="form-group">
-				<label>
-					${game.i18n.localize('AURAS.LineWidth')}
-					<span class="units">(px)</span>
-				</label>
-				<input type="number" value="${aura.lineWidth}" step="1" min="1"
-					name="flags.token-auras-expanded.aura${idx + 1}.lineWidth">
-			</div>
-            <div class="form-group">
-                <label>${game.i18n.localize('SCENES.GridSquare')}</label>
-                <input type="checkbox" name="flags.token-auras-expanded.aura${idx + 1}.square"
-                       ${aura.square ? 'checked' : ''}>
-            </div>
-        `);
+        </div>
+        <div class="form-group">
+            <label>
+                ${game.i18n.localize('AURAS.Opacity')}
+                <span class="units">(0 – 1)</span>
+            </label>
+            <input type="number" value="${aura.opacity}" step="any" min="0" max="1"
+                   name="flags.token-auras-expanded.aura${idx + 1}.opacity">
+        </div>
+        <div class="form-group">
+            <label>
+    				${game.i18n.localize('Distance')}
+    				<span class="units">(${canvas.scene.grid.units || 'units'})</span>
+            </label>
+            <input type="number" value="${aura.distance ? aura.distance : ''}" step="any"
+                   name="flags.token-auras-expanded.aura${idx + 1}.distance" min="0">
+        </div>
+        <div class="form-group">
+            <label>${game.i18n.localize('AURAS.Style')}</label>
+            <select name="flags.token-auras-expanded.aura${idx + 1}.style">
+                <option value="fill" ${aura.style === 'fill' ? 'selected' : ''}>Fill Only</option>
+                <option value="line" ${aura.style === 'line' ? 'selected' : ''}>Line Only</option>
+                <option value="both" ${aura.style === 'both' ? 'selected' : ''}>Fill and Line</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>
+                ${game.i18n.localize('AURAS.LineWidth')}
+                <span class="units">(px)</span>
+            </label>
+            <input type="number" value="${aura.lineWidth}" step="1" min="1"
+                name="flags.token-auras-expanded.aura${idx + 1}.lineWidth">
+        </div>
+        <div class="form-group">
+            <label>${game.i18n.localize('Square')}</label>
+            <input type="checkbox" name="flags.token-auras-expanded.aura${idx + 1}.square"
+                   ${aura.square ? 'checked' : ''}>
+        </div>
+    `);
 
-		nav.parent().find('footer').before($(`
-            <div class="tab" data-tab="auras">
-                ${auraConfig[0]}
-                <hr>
-                ${auraConfig[1]}
-            </div>
-        `));
+		// Create the tab content div
+		const tabDiv = document.createElement('div');
+		tabDiv.className = 'tab scrollable';
+		tabDiv.dataset.group = 'sheet';
+		tabDiv.dataset.tab = 'auras';
+		tabDiv.dataset.applicationPart = 'auras';
+		tabDiv.innerHTML = `
+        ${auraConfig[0]}
+        <hr>
+        ${auraConfig[1]}
+    `;
+
+		// Insert before footer (footer is a sibling to nav, not inside nav.parentElement)
+		const footer = html.querySelector('footer');
+		if (footer) {
+			footer.parentNode.insertBefore(tabDiv, footer);
+		}
 
 		// Handle all aura tab changes
-		nav.parent()
-			.find('.tab[data-tab="auras"]')
-			.on('change', 'input, select', event => {
-				const input = event.currentTarget;
-				const form = input.closest('form');
-				if (!form) return;
+		tabDiv.addEventListener('change', event => {
+			const input = event.target;
+			if (!input.matches('input, select')) return;
 
-				// Clear existing preview
-				if (config.preview?.tokenAuras) {
-					config.preview.tokenAuras.destroy();
-					config.preview.tokenAuras = null;
+			const form = input.closest('form');
+			if (!form) return;
+
+			// Clear existing preview
+			if (config.preview?.tokenAuras) {
+				config.preview.tokenAuras.destroy();
+				config.preview.tokenAuras = null;
+			}
+
+			const fd = new FormDataExtended(form);
+			const updateData = fd.object;
+
+			// Update the preview document
+			for (const [k, v] of Object.entries(updateData)) {
+				if (k.startsWith('flags.token-auras-expanded')) {
+					foundry.utils.setProperty(config.document, k, v);
 				}
+			}
 
-				const fd = new FormDataExtended(form);
-				const updateData = fd.object;
+			// Redraw auras
+			if (config.document.object) {
+				Auras.drawAuras(config.document.object);
+			}
+		});
 
-				// Update the preview document
-				for (const [k, v] of Object.entries(updateData)) {
-					if (k.startsWith('flags.token-auras-expanded')) {
-						foundry.utils.setProperty(config.document, k, v);
-					}
-				}
+		// If no tab is active, trigger identity tab activation properly
+		const activeTabs = html.querySelectorAll('a[data-action="tab"].active');
 
-				// Redraw auras
-				if (config.document.object) {
-					Auras.drawAuras(config.document.object);
-				}
-			});
+		if (activeTabs.length === 0) {
+			// No active tab - activate identity through Foundry's system
+			const identityTab = html.querySelector('a[data-tab="identity"]');
+			if (identityTab) {
+				identityTab.click();
+			}
+		}
 	},
 
 	uuid: function () {
@@ -303,7 +344,10 @@ Hooks.once('init', () => {
 });
 
 Hooks.on('renderTokenHUD', (hud, html, token) => {
-	const controlledActor = game.actors.get(token.actorId);
+	const tokenDoc = canvas.tokens.get(token._id)?.document;
+	const controlledActor = tokenDoc?.actor;
+
+	if (!controlledActor || !controlledActor.flags) return;
 
 	const hasOwnerPermission = controlledActor.testUserPermission(game.user, "OWNER");
 	Auras.debugFlags("Is Owner:", hasOwnerPermission);
@@ -313,27 +357,23 @@ Hooks.on('renderTokenHUD', (hud, html, token) => {
 
 
 	const hidden = controlledActor.getFlag(Auras.FLAG, 'hidden');
-	// Auras.debugFlags("token, Actor", controlledActor);
-	const tokenHudButton = $(`<div class="control-icon${hidden ? '' : ' active'}" data-action="toggle-auras" title="Toggle aura visibility">
-        <i class="fas fa-ring"></i>
-    </div>`);
-	html.find('.col.right').append(tokenHudButton);
 
-	const rightCol = html.find('.col.right');
-	const otherButtons = rightCol.find('.control-icon');
-	// Auras.debugFlags("Other control icons:", otherButtons);
+	// Create the button element
+	const tokenHudButton = document.createElement('div');
+	tokenHudButton.className = `control-icon${hidden ? '' : ' active'}`;
+	tokenHudButton.dataset.action = 'toggle-auras';
+	tokenHudButton.title = 'Toggle aura visibility';
+	tokenHudButton.innerHTML = '<i class="fas fa-ring"></i>';
 
-	tokenHudButton.click(async () => {
-		//TODO
-		// Auras.debugFlags("[ZRT] renderTokenHUD, HUD:", typeof (hud), hud);
-		// Auras.debugFlags("[ZRT] renderTokenHUD, HTML", html);
-		// Auras.debugFlags("[ZRT] renderTokenHUD, TOKEN", token);
-		// Auras.debugFlags("[ZRT] FLAG", Auras.FLAG);
+	// Append to the right column
+	const rightCol = html.querySelector('.col.right');
+	if (rightCol) {
+		rightCol.appendChild(tokenHudButton);
+	}
 
-
+	tokenHudButton.addEventListener('click', async () => {
 		Auras.debugFlags(controlledActor);
 
-		// Auras.debugFlags("clicked button, ActorId: ", token.actorId, "controlledActor:", controlledActor);
 		await Auras.toggleActorAuras(controlledActor);
 
 		hud.render();

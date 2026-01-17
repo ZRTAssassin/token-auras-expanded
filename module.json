@@ -19,7 +19,7 @@
 		}
 	],
 	"scripts": [
-		"main-v12.js"
+		"main-v13.js"
 	],
 	"flags": {
 		"token-auras-extended": {
