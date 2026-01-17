@@ -3,12 +3,12 @@
 	"name": "token-auras-expanded",
 	"title": "Token Auras Expanded",
 	"description": "Provide options for configuring token auras. Forked from Kim Mantas's original Token Auras.",
-	"version": "2.8",
+	"version": "2.9",
 	"minimumCoreVersion": "11",
-	"compatibleCoreVersion": "11",
+	"compatibleCoreVersion": "13",
 	"compatibility": {
 		"minimum": 11,
-		"verified": 11
+		"verified": 13
 	},
 	"authors": [
 		{
@@ -28,7 +28,7 @@
 	},
 	"url": "https://bitbucket.org/zrt-foundryvtt/token-auras-expanded",
 	"manifest": "https://bitbucket.org/zrt-foundryvtt/token-auras-expanded/raw/master/module.json",
-	"download": "https://bitbucket.org/zrt-foundryvtt/token-auras-expanded/get/2.8.zip",
+	"download": "https://bitbucket.org/zrt-foundryvtt/token-auras-expanded/get/2.9.zip",
 	"languages": [
 		{
 			"lang": "en",
