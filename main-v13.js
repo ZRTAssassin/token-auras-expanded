@@ -387,12 +387,7 @@ Hooks.on('drawToken', Auras.drawAuras);
 Hooks.on('refreshToken', Auras.onRefreshToken);
 Hooks.on('updateToken', Auras.onUpdateToken);
 
-// Initialize the aura container when the effects layer is ready
-Hooks.on('canvasInit', () => {
-	if (!canvas.effects) return;
-	canvas.effects.tokenAuras = new PIXI.Container();
-	canvas.effects.addChild(canvas.effects.tokenAuras);
-});
+
 // restore aura when closing.
 Hooks.on('closeTokenConfig', (config) => {
 	if (config.token?.tokenAuras) {
