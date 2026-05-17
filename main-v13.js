@@ -47,6 +47,14 @@ const Auras = {
 			hideGM: false
 		};
 	},
+	refreshActorTokens: function (actor) {
+		if (!canvas.scene) return;
+		canvas.scene.tokens.forEach(tokenDoc => {
+			if (tokenDoc.actor?.id === actor.id && tokenDoc.object) {
+				Auras.drawAuras(tokenDoc.object);
+			}
+		});
+	},
 
 	onConfigRender: function (config, html) {
 		if (config.token?.tokenAuras) {
@@ -255,7 +263,15 @@ const Auras = {
 
 		if (token.document.hidden && !game.user.isGM) return;
 
-		const auras = Auras.getAllAuras(token.document).filter(a => {
+		const allAuras = Auras.getAllAuras(token.document);
+
+		// Apply Active Effect overrides
+		const aeOverrides = token.document.actor?._auraOverrides || {};
+		if (aeOverrides.aura1) foundry.utils.mergeObject(allAuras[0], aeOverrides.aura1);
+		if (aeOverrides.aura2) foundry.utils.mergeObject(allAuras[1], aeOverrides.aura2);
+
+
+		const auras = allAuras.filter(a => {
 			if (token.document.actor?.getFlag(Auras.FLAG, 'hidden')) {
 				Auras.debugFlags('[ZRT] Auras hidden by flag');
 				return false;
@@ -405,14 +421,42 @@ Hooks.on('updateActor', (actor, changes) => {
 		hasHiddenChange: changes.flags?.[Auras.FLAG]?.hidden !== undefined
 	});
 	if (changes.flags?.[Auras.FLAG]?.hidden !== undefined) {
-		canvas.scene.tokens.forEach(tokenDoc => {
-			if (tokenDoc.actor?.id === actor.id) {
-				Auras.debugFlags('[ZRT] Refreshing token due to actor update:', tokenDoc.id);
-				Auras.drawAuras(tokenDoc.object);
-			}
-		});
+		Auras.refreshActorTokens(actor);
 	}
 });
 
-//CONFIG.debug.hooks=true
-//Hooks.events
+
+Hooks.on("applyActiveEffect", (actor, change, current, delta, changes) => {
+	if (!change.key.startsWith("flags.token-auras-expanded")) return;
+
+	const parts = change.key.split(".");
+	const auraKey = parts[2];
+	const prop = parts[3];
+
+	// Store transiently on the actor object (not persisted to DB)
+	actor._auraOverrides ??= {};
+	foundry.utils.setProperty(actor._auraOverrides, `${auraKey}.${prop}`, change.value);
+
+	return false;
+});
+
+Hooks.on("createActiveEffect", (effect, options, userId) => {
+	const actor = effect.parent;
+	if (!(actor instanceof Actor)) return;
+	actor._auraOverrides = {};
+	Auras.refreshActorTokens(actor);
+});
+
+Hooks.on("deleteActiveEffect", (effect, options, userId) => {
+	const actor = effect.parent;
+	if (!(actor instanceof Actor)) return;
+	actor._auraOverrides = {};
+	Auras.refreshActorTokens(actor);
+});
+
+Hooks.on("updateActiveEffect", (effect, changes, options, userId) => {
+	const actor = effect.parent;
+	if (!(actor instanceof Actor)) return;
+	actor._auraOverrides = {};
+	Auras.refreshActorTokens(actor);
+});
