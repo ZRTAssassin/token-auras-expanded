@@ -260,16 +260,46 @@ const Auras = {
 			token.tokenAuras.removeChildren().forEach(c => c.destroy());
 		}
 
-
 		if (token.document.hidden && !game.user.isGM) return;
 
 		const allAuras = Auras.getAllAuras(token.document);
 
-		// Apply Active Effect overrides
-		const aeOverrides = token.document.actor?._auraOverrides || {};
+		// Compute AE overrides directly from the actor's active effects
+		const aeOverrides = {};
+		const actor = token.document.actor;
+		if (actor) {
+			for (const effect of actor.effects) {
+				if (effect.disabled || effect.isSuppressed) continue;
+				for (const change of effect.changes) {
+					if (!change.key.startsWith("flags.token-auras-expanded.")) continue;
+					const parts = change.key.split(".");
+					const auraKey = parts[2];
+					const prop = parts[3];
+					if (!auraKey || !prop) continue;
+
+					let value = change.value;
+					// Parse numeric values
+					if (!isNaN(value) && value !== '') value = Number(value);
+					// Parse booleans
+					if (value === 'true') value = true;
+					if (value === 'false') value = false;
+
+					foundry.utils.setProperty(aeOverrides, `${auraKey}.${prop}`, value);
+				}
+			}
+		}
+
+		// Merge overrides into manual auras
 		if (aeOverrides.aura1) foundry.utils.mergeObject(allAuras[0], aeOverrides.aura1);
 		if (aeOverrides.aura2) foundry.utils.mergeObject(allAuras[1], aeOverrides.aura2);
 
+		// Create additional auras from AE overrides (aura3+)
+		for (const [key, overrideProps] of Object.entries(aeOverrides)) {
+			if (key === 'aura1' || key === 'aura2') continue;
+			const newAura = Auras.newAura();
+			foundry.utils.mergeObject(newAura, overrideProps);
+			allAuras.push(newAura);
+		}
 
 		const auras = allAuras.filter(a => {
 			if (token.document.actor?.getFlag(Auras.FLAG, 'hidden')) {
@@ -660,42 +690,25 @@ Hooks.on('updateActor', (actor, changes) => {
 });
 
 
-Hooks.on("applyActiveEffect", (actor, change, current, delta, changes) => {
-	if (!change.key.startsWith("flags.token-auras-expanded")) return;
-
-	const parts = change.key.split(".");
-	const auraKey = parts[2];
-	const prop = parts[3];
-
-	// Store transiently on the actor object (not persisted to DB)
-	actor._auraOverrides ??= {};
-	foundry.utils.setProperty(actor._auraOverrides, `${auraKey}.${prop}`, change.value);
-
-	return false;
-});
-
 Hooks.on("createActiveEffect", (effect, options, userId) => {
 	const actor = effect.parent;
 	if (!(actor instanceof Actor)) return;
-	actor._auraOverrides = {};
 	Auras.refreshActorTokens(actor);
 });
 
 Hooks.on("deleteActiveEffect", (effect, options, userId) => {
 	const actor = effect.parent;
 	if (!(actor instanceof Actor)) return;
-	actor._auraOverrides = {};
 	Auras.refreshActorTokens(actor);
 });
 
 Hooks.on("updateActiveEffect", (effect, changes, options, userId) => {
 	const actor = effect.parent;
 	if (!(actor instanceof Actor)) return;
-	actor._auraOverrides = {};
 	Auras.refreshActorTokens(actor);
 });
 
-Hooks.on('getChatLogEntryContext', (html, options) => {
+Hooks.on('getChatMessageContextOptions', (html, options) => {
 	if (!InspirationReroll.isDnd5e()) return;
 	if (!InspirationReroll.isEnabled()) return;
 
