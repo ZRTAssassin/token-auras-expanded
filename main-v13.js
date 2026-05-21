@@ -489,7 +489,6 @@ const InspirationReroll = {
 			speaker: message.speaker,
 			flavor: `${originalFlavor}${originalFlavor ? '<br>' : ''}${rerollNote}`,
 			rolls: [newRoll],
-			type: CONST.CHAT_MESSAGE_TYPES.ROLL,
 			flags: {
 				[Auras.FLAG]: {
 					inspirationReroll: true,
@@ -712,6 +711,7 @@ Hooks.on('getChatMessageContextOptions', (html, options) => {
 	if (!InspirationReroll.isDnd5e()) return;
 	if (!InspirationReroll.isEnabled()) return;
 
+	// Reroll option (only on messages that haven't been rerolled yet)
 	options.push({
 		name: 'Reroll with Inspiration',
 		icon: '<i class="fas fa-dice-d20"></i>',
@@ -719,11 +719,10 @@ Hooks.on('getChatMessageContextOptions', (html, options) => {
 			const messageId = li.dataset.messageId;
 			const message = game.messages.get(messageId);
 			if (!message) return false;
+			if (message.getFlag(Auras.FLAG, 'inspirationReroll')) return false;
 
 			const d20Results = InspirationReroll.getD20Results(message);
 			if (d20Results.length === 0) return false;
-
-			if (message.getFlag(Auras.FLAG, 'inspirationReroll')) return false;
 
 			const actor = InspirationReroll.getActorFromMessage(message);
 			if (!actor) return false;
@@ -738,6 +737,21 @@ Hooks.on('getChatMessageContextOptions', (html, options) => {
 			const messageId = li.dataset.messageId;
 			const message = game.messages.get(messageId);
 			if (message) InspirationReroll.handleReroll(message);
+		}
+	});
+
+	// Disabled entry shown on already-rerolled messages
+	options.push({
+		name: 'Already Rerolled with Inspiration',
+		icon: '<i class="fas fa-dice-d20"></i>',
+		condition: li => {
+			const messageId = li.dataset.messageId;
+			const message = game.messages.get(messageId);
+			if (!message) return false;
+			return !!message.getFlag(Auras.FLAG, 'inspirationReroll');
+		},
+		callback: () => {
+			ui.notifications.info("This roll was already rerolled with Inspiration and can't be rerolled again.");
 		}
 	});
 });
