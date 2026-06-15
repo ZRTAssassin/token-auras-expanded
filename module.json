@@ -3,7 +3,7 @@
 	"name": "token-auras-expanded",
 	"title": "Token Auras Expanded",
 	"description": "Provide options for configuring token auras. Forked from Kim Mantas's original Token Auras.",
-	"version": "2.9",
+	"version": "2.11",
 	"minimumCoreVersion": "11",
 	"compatibleCoreVersion": "13",
 	"compatibility": {

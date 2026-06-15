@@ -60,9 +60,10 @@ const Auras = {
 		if (config.token?.tokenAuras) {
 			config.token.tokenAuras.visible = false;
 		}
+		const doc = config.document ?? config.token;
 
 
-		const auras = Auras.getManualAuras(config.document);
+		const auras = Auras.getManualAuras(doc);
 
 		// Expand the width
 		const position = foundry.utils.deepClone(config.position);
@@ -131,7 +132,7 @@ const Auras = {
         <div class="form-group">
             <label>
     				${game.i18n.localize('Distance')}
-    				<span class="units">(${canvas.scene.grid.units || 'units'})</span>
+    				<span class="units">(${canvas.scene?.grid?.units || 'units'})</span>
             </label>
             <input type="number" value="${aura.distance ? aura.distance : ''}" step="any"
                    name="flags.token-auras-expanded.aura${idx + 1}.distance" min="0">
@@ -177,6 +178,18 @@ const Auras = {
 			footer.parentNode.insertBefore(tabDiv, footer);
 		}
 
+		tabDiv.querySelectorAll('input[data-edit]').forEach(colorInput => {
+			const textInput = tabDiv.querySelector(`input[name="${colorInput.dataset.edit}"]`);
+			if (!textInput) return;
+			colorInput.addEventListener('input', () => {
+				textInput.value = colorInput.value;
+				textInput.dispatchEvent(new Event('change', { bubbles: true }));
+			});
+			textInput.addEventListener('input', () => {
+				colorInput.value = textInput.value;
+			});
+		});
+
 		// Handle all aura tab changes
 		tabDiv.addEventListener('change', event => {
 			const input = event.target;
@@ -191,19 +204,19 @@ const Auras = {
 				config.preview.tokenAuras = null;
 			}
 
-			const fd = new FormDataExtended(form);
+			const fd = new foundry.applications.ux.FormDataExtended(form);
 			const updateData = fd.object;
 
 			// Update the preview document
 			for (const [k, v] of Object.entries(updateData)) {
 				if (k.startsWith('flags.token-auras-expanded')) {
-					foundry.utils.setProperty(config.document, k, v);
+					foundry.utils.setProperty(doc, k, v);
 				}
 			}
 
 			// Redraw auras
-			if (config.document.object) {
-				Auras.drawAuras(config.document.object);
+			if (doc.object) {
+				Auras.drawAuras(doc.object);
 			}
 		});
 
@@ -315,7 +328,7 @@ const Auras = {
 		if (!auras.length) return;
 
 		// Get the aura container from the appropriate layer
-		if (!canvas.effects.tokenAuras) {
+		if (!canvas.effects.tokenAuras || canvas.effects.tokenAuras.destroyed) {
 			canvas.effects.tokenAuras = new PIXI.Container();
 			canvas.effects.addChild(canvas.effects.tokenAuras);
 		}
@@ -662,6 +675,7 @@ Hooks.on('renderTokenHUD', (hud, html, token) => {
 
 // Register hooks
 Hooks.on('renderTokenConfig', Auras.onConfigRender);
+Hooks.on('renderPrototypeTokenConfig5e', Auras.onConfigRender);
 Hooks.on('drawToken', Auras.drawAuras);
 Hooks.on('refreshToken', Auras.onRefreshToken);
 Hooks.on('updateToken', Auras.onUpdateToken);
@@ -754,4 +768,9 @@ Hooks.on('getChatMessageContextOptions', (html, options) => {
 			ui.notifications.info("This roll was already rerolled with Inspiration and can't be rerolled again.");
 		}
 	});
+});
+
+
+Hooks.on('canvasTearDown', () => {
+	canvas.effects.tokenAuras = null;
 });
