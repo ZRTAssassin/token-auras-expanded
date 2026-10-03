@@ -65,6 +65,9 @@ const Auras = {
 
 		const auras = Auras.getManualAuras(doc);
 
+		// v14: may fire from both renderPrototypeTokenConfig and a system subclass hook, and on re-render.
+		// Remove any previously injected elements so injection is idempotent.
+		html.querySelectorAll('[data-tab="auras"][data-group="sheet"]').forEach(el => el.remove());
 		// Expand the width
 		const position = foundry.utils.deepClone(config.position);
 		position.width = 540;
@@ -283,19 +286,22 @@ const Auras = {
 		if (actor) {
 			for (const effect of actor.effects) {
 				if (effect.disabled || effect.isSuppressed) continue;
-				for (const change of effect.changes) {
+				// v14: ActiveEffect#changes migrated to ActiveEffect#system#changes
+				const changes = effect.system?.changes ?? effect.changes ?? [];
+				for (const change of changes) {
 					if (!change.key.startsWith("flags.token-auras-expanded.")) continue;
 					const parts = change.key.split(".");
 					const auraKey = parts[2];
 					const prop = parts[3];
 					if (!auraKey || !prop) continue;
 
+					// v14 stores change values JSON-parsed (numbers/booleans arrive typed); v13 stores strings
 					let value = change.value;
-					// Parse numeric values
-					if (!isNaN(value) && value !== '') value = Number(value);
-					// Parse booleans
-					if (value === 'true') value = true;
-					if (value === 'false') value = false;
+					if (typeof value === 'string') {
+						if (value === 'true') value = true;
+						else if (value === 'false') value = false;
+						else if (value.trim() !== '' && !isNaN(value)) value = Number(value);
+					}
 
 					foundry.utils.setProperty(aeOverrides, `${auraKey}.${prop}`, value);
 				}
@@ -469,14 +475,14 @@ const InspirationReroll = {
 
 		if (d20Results.length === 1) {
 			const rollData = actor.getRollData?.() || {};
-			newRoll = new Roll(originalRoll.formula, rollData);
+			newRoll = new foundry.dice.Roll(originalRoll.formula, rollData);
 			await newRoll.evaluate();
 			rerollNote = `<strong>Inspiration Reroll</strong> (original: ${originalRoll.total})`;
 		} else {
 			const selected = d20Results[selectedIndex];
 			const oldValue = selected.value;
 
-			const freshDie = new Roll('1d20');
+			const freshDie = new foundry.dice.Roll('1d20');
 			await freshDie.evaluate();
 			const newValue = freshDie.total;
 
@@ -490,7 +496,7 @@ const InspirationReroll = {
 
 			rollData.total = InspirationReroll._recalculateTotal(rollData.terms);
 
-			newRoll = Roll.fromData(rollData);
+			newRoll = foundry.dice.Roll.fromData(rollData);
 			newRoll._total = rollData.total;
 
 			rerollNote = `<strong>Inspiration Reroll</strong> (die ${selectedIndex + 1}: ${oldValue} -> ${newValue}, original total: ${originalRoll.total})`;
@@ -575,28 +581,25 @@ const InspirationReroll = {
 	},
 
 	showRerollDialog: async function (message, d20Results) {
-		const dieButtons = {};
+		// v14: the bare Dialog (V1) global no longer exists; use DialogV2
+		const buttons = d20Results.map((d, idx) => ({
+			action: `die${idx}`,
+			label: `Die ${idx + 1}: ${d.value}${d.active ? '' : ' (discarded)'}`,
+			icon: 'fas fa-dice-d20',
+			callback: () => idx
+		}));
+		buttons.push({ action: 'cancel', label: 'Cancel', icon: 'fas fa-times', default: true });
 
-		d20Results.forEach((d, idx) => {
-			const label = `Die ${idx + 1}: ${d.value}${d.active ? '' : ' (discarded)'}`;
-			dieButtons[`die${idx}`] = {
-				label: label,
-				icon: '<i class="fas fa-dice-d20"></i>',
-				callback: () => InspirationReroll.performReroll(message, d20Results, idx)
-			};
+		const choice = await foundry.applications.api.DialogV2.wait({
+			window: { title: 'Inspiration Reroll' },
+			content: '<p>This roll has multiple d20s. Which die do you want to reroll?</p>',
+			buttons,
+			rejectClose: false
 		});
 
-		dieButtons.cancel = {
-			label: 'Cancel',
-			icon: '<i class="fas fa-times"></i>'
-		};
-
-		new Dialog({
-			title: 'Inspiration Reroll',
-			content: '<p>This roll has multiple d20s. Which die do you want to reroll?</p>',
-			buttons: dieButtons,
-			default: 'cancel'
-		}).render(true);
+		if (typeof choice === 'number') {
+			await InspirationReroll.performReroll(message, d20Results, choice);
+		}
 	},
 
 	handleReroll: async function (message) {
@@ -636,7 +639,7 @@ Hooks.once('init', () => {
 });
 
 Hooks.on('renderTokenHUD', (hud, html, token) => {
-	const tokenDoc = canvas.tokens.get(token._id)?.document;
+	const tokenDoc = hud.document ?? canvas.tokens.get(token?._id)?.document;
 	const controlledActor = tokenDoc?.actor;
 
 	if (!controlledActor || !controlledActor.flags) return;
@@ -675,6 +678,7 @@ Hooks.on('renderTokenHUD', (hud, html, token) => {
 
 // Register hooks
 Hooks.on('renderTokenConfig', Auras.onConfigRender);
+Hooks.on('renderPrototypeTokenConfig', Auras.onConfigRender);
 Hooks.on('renderPrototypeTokenConfig5e', Auras.onConfigRender);
 Hooks.on('drawToken', Auras.drawAuras);
 Hooks.on('refreshToken', Auras.onRefreshToken);
@@ -721,15 +725,21 @@ Hooks.on("updateActiveEffect", (effect, changes, options, userId) => {
 	Auras.refreshActorTokens(actor);
 });
 
+// v14 renamed ContextMenuEntry keys: name->label, condition->visible, callback->onClick(event, target)
+const contextEntry = ({ label, icon, visible, onClick }) => {
+	if (game.release.generation >= 14) return { label, icon, visible, onClick };
+	return { name: label, icon, condition: visible, callback: li => onClick(null, li) };
+};
+
 Hooks.on('getChatMessageContextOptions', (html, options) => {
 	if (!InspirationReroll.isDnd5e()) return;
 	if (!InspirationReroll.isEnabled()) return;
 
 	// Reroll option (only on messages that haven't been rerolled yet)
-	options.push({
-		name: 'Reroll with Inspiration',
+	options.push(contextEntry({
+		label: 'Reroll with Inspiration',
 		icon: '<i class="fas fa-dice-d20"></i>',
-		condition: li => {
+		visible: li => {
 			const messageId = li.dataset.messageId;
 			const message = game.messages.get(messageId);
 			if (!message) return false;
@@ -747,27 +757,27 @@ Hooks.on('getChatMessageContextOptions', (html, options) => {
 			const isGM = game.user.isGM;
 			return isAuthor || isOwner || isGM;
 		},
-		callback: li => {
+		onClick: (event, li) => {
 			const messageId = li.dataset.messageId;
 			const message = game.messages.get(messageId);
 			if (message) InspirationReroll.handleReroll(message);
 		}
-	});
+	}));
 
 	// Disabled entry shown on already-rerolled messages
-	options.push({
-		name: 'Already Rerolled with Inspiration',
+	options.push(contextEntry({
+		label: 'Already Rerolled with Inspiration',
 		icon: '<i class="fas fa-dice-d20"></i>',
-		condition: li => {
+		visible: li => {
 			const messageId = li.dataset.messageId;
 			const message = game.messages.get(messageId);
 			if (!message) return false;
 			return !!message.getFlag(Auras.FLAG, 'inspirationReroll');
 		},
-		callback: () => {
+		onClick: () => {
 			ui.notifications.info("This roll was already rerolled with Inspiration and can't be rerolled again.");
 		}
-	});
+	}));
 });
 
 
