@@ -27,7 +27,7 @@
 		}
 	},
 	"url": "https://github.com/ZRTAssassin/token-auras-expanded",
-	"manifest": "https://raw.githubusercontent.com/ZRTAssassin/token-auras-expanded/master/module.json",
+	"manifest": "https://raw.githubusercontent.com/ZRTAssassin/token-auras-expanded/v14/module.json",
 	"download": "https://github.com/ZRTAssassin/token-auras-expanded/archive/refs/tags/2.14.zip",
 	"languages": [
 		{
